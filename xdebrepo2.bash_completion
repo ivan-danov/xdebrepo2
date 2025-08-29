@@ -1,0 +1,83 @@
+# bash xdebrepo2 completion
+
+_xdebrepo2()
+{
+	local cur conns
+	_init_completion -s || return
+
+	COMPREPLY=()
+	cur=${COMP_WORDS[COMP_CWORD]}
+
+	if [ $COMP_CWORD -eq 1 ]; then
+		conns="init key repo ssh"
+		COMPREPLY=( $(compgen -W "$conns" $cur) )
+		return 0
+	fi
+
+	if [ $COMP_CWORD -eq 2 ]; then
+		if [ "${COMP_WORDS[1]}" == "init" ]; then
+			if [ $COMP_CWORD -le 3 ]; then
+				_filedir -d
+			fi
+			return 0
+		fi
+		if [ "${COMP_WORDS[1]}" == "key" ]; then
+			conns="gen ls list"
+			COMPREPLY=( $(compgen -W "$conns" $cur) )
+			return 0
+		fi
+		if [ "${COMP_WORDS[1]}" == "repo" ]; then
+			conns="create destroy ls aptconf pubkey add del list dists ssh_config"
+			COMPREPLY=( $(compgen -W "$conns" $cur) )
+			return 0
+		fi
+		if [ "${COMP_WORDS[1]}" == "ssh" ]; then
+			conns="add_publish_key add_apt_key"
+			COMPREPLY=( $(compgen -W "$conns" $cur) )
+			return 0
+		fi
+		return 0
+	fi
+	if [ $COMP_CWORD -eq 3 ]; then
+		if [ "${COMP_WORDS[1]}" == "key" ]; then
+			if [ "${COMP_WORDS[2]}" != "list" ]; then
+				return 0
+			fi
+			conns=$(xdebrepo2 key ls)
+			return 0;
+		fi
+		if [ "${COMP_WORDS[1]}" == "repo" ]; then
+			if [ "${COMP_WORDS[2]}" == "create" ]; then
+				return 0
+			fi
+			conns=$(xdebrepo2 repo ls)
+			COMPREPLY=( $(compgen -W "$conns" $cur) )
+			return 0
+		fi
+		if [ "${COMP_WORDS[1]}" == "ssh" ]; then
+			conns=$(xdebrepo2 repo ls)
+			COMPREPLY=( $(compgen -W "$conns" $cur) )
+			return 0
+		fi
+		return 0
+	fi
+	if [ $COMP_CWORD -eq 4 ]; then
+		if [ "${COMP_WORDS[1]}" == "ssh" ]; then
+			_filedir
+			return 0
+		fi
+		if [ "${COMP_WORDS[1]}" != "repo" ]; then
+			return 0
+		fi
+		if [ "${COMP_WORDS[2]}" != "list" ]; then
+			return 0
+		fi
+		conns=$(xdebrepo2 repo dists ${COMP_WORDS[3]})
+		# source ${XDEBREPO2_CONF_DIR_BASE}/etc/xdebrepo2/xdebrepo2.conf
+		# conns=$(\cat ${XDEBREPO2_PATH}/${COMP_WORDS[3]}/conf/distributions 2>/dev/null| awk '/Codename:/ {printf "%s\n", $2}')
+		COMPREPLY=( $(compgen -W "$conns" $cur) )
+		return 0
+	fi
+	return 0
+} &&
+complete -F _xdebrepo2 xdebrepo2

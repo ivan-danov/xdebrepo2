@@ -1,0 +1,35 @@
+.TH xdebrepo2 1 "2025" "xdebrepo2 v1.0" "xdebrepo2 manual"
+.SH NAME
+xdebrepo2 \- custom debian depository organizer
+.SH SYNOPSIS
+.sp
+.nf
+\fIxdebrepo2\fR init <repo path> <conf path>
+
+\fIxdebrepo2\fR key gen <gpg dir> <owner name> <owner email>
+\fIxdebrepo2\fR key ls
+\fIxdebrepo2\fR key list <gpg dir>
+
+\fIxdebrepo2\fR repo create <repodir> <gpg dir> <key>
+\fIxdebrepo2\fR repo repo destroy <repodir>
+\fIxdebrepo2\fR repo repo ls
+
+\fIxdebrepo2\fR repo aptconf <repodir>
+\fIxdebrepo2\fR repo pubkey <repodir>
+\fIxdebrepo2\fR repo add <repodir> <distname> <deb file>
+\fIxdebrepo2\fR repo del <repodir> <distname> <package name>
+\fIxdebrepo2\fR repo list <repodir> [distname]
+\fIxdebrepo2\fR repo dists <repodir>
+\fIxdebrepo2\fR repo ssh_config <repodir>
+
+\fIxdebrepo2\fR ssh add_publish_key <repodir>
+\fIxdebrepo2\fR ssh add_apt_key <repodir>
+.fi
+.sp
+.SH DESCRIPTION
+.sp
+.B xdebrepo2
+
+.RS
+.SH AUTHOR
+(c) 2025 Ivan Danov

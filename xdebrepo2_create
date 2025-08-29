@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# -u  Treat unset variables as an error when substituting.
+# -e  Exit immediately if a command exits with a non-zero status.
+set -eu
+
+export SCRIPT_PATH=$(realpath $(dirname $0))
+
+XDEBREPO2=$(which xdebrepo2) || true
+if [ ! -n "${XDEBREPO2}" ]; then
+	XDEBREPO2=~/src/xdebrepo2/xdebrepo2
+fi
+if [ ! -n "${XDEBREPO2}" ]; then
+	echo "xdebrepo2 not installed"
+	exit 1
+fi
+
+# create devel/test/release debian repos
+
+export REPO_OWNER=${REPO_OWNER:-xdebrepo2}
+export REPO_OWNER_DIR=${REPO_OWNER_DIR:-xdebrepo2}
+export REPO_OWNER_EMAIL=${REPO_OWNER_EMAIL:-it@${REPO_OWNER}.com}
+
+export REPO_SRV_NAME=${REPO_SRV_NAME:-127.0.0.1}
+export REPO_WEB_DIR=${REPO_WEB_DIR:-/xdebrepo2}
+
+export REPO_FS_DIR=${REPO_FS_DIR:-/var/www/html/xdebrepo2}
+
+export REPO_TYPES=${REPO_TYPES:-"devel test release"}
+export REPO_DISTS=${REPO_DISTS:-"bionic focal jammy noble"}
+export REPO_ARCHS=${REPO_ARCHS:-"amd64 arm64 armhf"}
+
+# export INFO_FILE=/${REPO_PUBLISH_USER}/${REPO_OWNER}-repo-instructions.txt
+
+mkdir -p /etc/xdebrepo2
+mkdir -p ${REPO_FS_DIR}
+
+${XDEBREPO2} init ${REPO_FS_DIR} /etc/xdebrepo2
+
+for REPO_TYPE in ${REPO_TYPES}; do
+	RTYPE="${REPO_OWNER_DIR}-${REPO_TYPE}"
+	${XDEBREPO2} key gen "${RTYPE}.gpg" "${REPO_OWNER}" "${REPO_OWNER_EMAIL}"
+	${XDEBREPO2} repo create "${RTYPE}" "${RTYPE}.gpg" "${REPO_OWNER}"
+	# echo "vi /etc/xdebrepo2/${RTYPE}/xdebrepo2.conf"
+	for REPO_DIST in ${REPO_DISTS}; do
+# 		for REPO_ARCH in ${REPO_ARCHS}; do
+			${XDEBREPO2} repo dist_add "${RTYPE}" "${REPO_DIST}" "${REPO_ARCHS}"
+# 		done
+	done
+	${XDEBREPO2} repo gen_install_deb "${RTYPE}" "${REPO_OWNER} <${REPO_OWNER_EMAIL}>"
+done
+

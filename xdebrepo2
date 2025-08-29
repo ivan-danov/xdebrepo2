@@ -1,0 +1,307 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+export LC_ALL=C
+
+MAIN_CONF_DIR=${XDEBREPO2_CONF_DIR_BASE:-/etc/xdebrepo2/}
+REPO_CONF_FILE=xdebrepo2.conf
+MAIN_CONF=${MAIN_CONF_DIR}/${REPO_CONF_FILE}
+
+SCRIPT_CMD="${BASH_SOURCE[0]}"
+SCRIPT_SELF="$(realpath "${BASH_SOURCE[0]}")"
+# shellcheck disable=SC2034 # appears unused
+SCRIPT_DIR=$(dirname "${SCRIPT_SELF}")
+SCRIPT_FILE=$(basename "${SCRIPT_SELF}")
+SCRIPT_NAME=$(basename -s .bash "$(basename -s .sh "${SCRIPT_FILE}")")
+SCRIPT_EXT=${SCRIPT_FILE#${SCRIPT_NAME}}
+
+PACKAGE_NAME=xdebrepo2
+CMDS_START_WITH=xdebrepo2
+
+# 💁✅📦🔎🌎🚽💥👶📁👍🔧⚠️👍 🔐👿👷🗑️☑️🧩🔥🙏
+log() {
+	echo >&2 -e "[$(date +"%Y-%m-%d %H:%M:%S")] ${1-}"
+}
+
+ifIsSet() {
+	[[ ${!1-x} == x ]] && return 1 || return 0
+}
+ifNotSet() {
+	[[ ${!1-x} == x ]] && return 0 || return 1
+}
+
+# param: log file name
+log_to_file_start() {
+	# save stdout and stderr to file
+	# descriptors 3 and 4,
+	# then redirect them to log file
+	exec 3>&1 4>&2 >"$1" 2>&1
+}
+
+# param: log file name
+log_to_file_end() {
+	# restore stdout and stderr
+	exec 1>&3 2>&4
+	chmod 0400 -- "$1"
+}
+
+# log_to_file_start
+
+cleanup_display_cleanup=false
+cleanup_display_error=true
+die() {
+	local msg=$1
+	local exit_code=${2-1} # Bash parameter expansion - default exit status 1. See https://wiki.bash-hackers.org/syntax/pe#use_a_default_value
+	log "$msg"
+	# [[ $exit_code -ne 0 ]] && log "💥 Error!"
+	cleanup_display_error=false
+	exit "$exit_code"
+}
+cleanup() {
+	exit_code=$?
+	trap - SIGINT SIGTERM ERR EXIT
+	[[ $cleanup_display_cleanup = true ]] && log "🚽 cleanup"
+
+	# NOTE: clean custom files, ...
+
+	[[ $cleanup_display_error = true ]] && [[ $exit_code -ne 0 ]] && log "💥 Error!"
+	exit "$exit_code"
+}
+trap cleanup SIGINT SIGTERM ERR EXIT
+
+remove_double_slash()
+{
+	INPUTSTR="${1}"
+	shoptbak=$(shopt -p extglob || true)
+	shopt -s extglob
+	OUTPUTSTR=${INPUTSTR//+(\/)/\/}
+	eval ${shoptbak}
+	echo ${OUTPUTSTR}
+}
+
+conf_load()
+{
+	if [ ! -f ${MAIN_CONF} ]; then
+		echo "ERROR: exec '$(basename ${0}) init' first!"
+		usage
+	fi
+	source ${MAIN_CONF}
+}
+
+repo_conf_load()
+{
+	if [ ! -f "${1}" ]; then
+		echo "ERROR: no config file '${1}!"
+		exit 1
+	fi
+	source "${1}"
+}
+
+
+xdebrepo2help_init()
+{
+	echo -e "\t<repo path> <conf path>"
+	echo -e "\t\tInit xdebrepo2 with path of repo and path of config"
+	echo -e "\t\tExample: xdebrepo2 init /var/www/html/xdebrepo2 /etc/xdebrepo2"
+}
+xdebrepo2_init()
+{
+# 	echo "${FUNCNAME[0]}($#): $@"
+	if [ $# -ne 2 ]; then
+		usage
+	fi
+
+	if [ -f ${MAIN_CONF} ]; then
+		echo "ERROR: config file '${MAIN_CONF}' found!"
+		exit 1
+	fi
+
+	echo "# xdebrepo2 config from $(date)" > ${MAIN_CONF}
+	echo "XDEBREPO2_PATH=\"${1}\"" > ${MAIN_CONF}
+	echo "XDEBREPO2_CONF_PATH=\"${2}\"" >> ${MAIN_CONF}
+	echo "XDEBREPO2_WEB_PATH=\"$(basename ${1})\"" >> ${MAIN_CONF}
+}
+
+# include files with extra commands
+EXTRA_CMD_FILES1=$(find "${SCRIPT_DIR}" -type f -name "${SCRIPT_NAME}_cmd_*${SCRIPT_EXT}")
+if [ -d "/usr/lib/${PACKAGE_NAME}" ]; then
+EXTRA_CMD_FILES2=$(find "/usr/lib/${PACKAGE_NAME}" -type f -name "${SCRIPT_NAME}_cmd_*${SCRIPT_EXT}")
+fi
+for f in ${EXTRA_CMD_FILES1} ${EXTRA_CMD_FILES2:-}; do
+	source  $f
+done
+
+# insert function ${CMDS_START_WITH}_??? here
+
+# gen_cmds <with subcommands> <master command> [delimiter]
+gen_cmds() {
+	if ifNotSet CMDS_START_WITH; then
+		return
+	fi
+	subcmds="${1:-0}"
+	usage_cmd="${2:-}"
+	delimiter="${3:-\n}"
+	CMDS=$(compgen -A function "${CMDS_START_WITH}_")
+	for cmd in ${CMDS}; do
+		icmd=${cmd#${CMDS_START_WITH}_}
+		if [ "${subcmds}" -eq 0 ]; then
+			if [ "${usage_cmd}" != "" ]; then
+				if [ "${icmd}" != "${usage_cmd}" ]; then
+					continue
+				fi
+			fi
+		fi
+
+		if [ "${usage_cmd}" != "" ]; then
+			partf=0
+			if [[ "${icmd}" =~ ^"${usage_cmd}".* ]]; then
+				partf=1
+			fi
+			if [ "${partf}" -eq 0 ]; then
+				continue
+			fi
+		fi
+
+		# check for master cmd
+		mcmd=${icmd}
+		foundf=false
+		while ([ -n "${mcmd}" ]); do
+			mcmd=${mcmd%_*}
+			if [ "${icmd}" == "${mcmd}" ]; then
+				mcmd=
+				continue;
+			fi
+			if [ "$(type -t "${CMDS_START_WITH}_${mcmd}")" == "function" ]; then
+				echo -e "${mcmd}_${icmd#${mcmd}_}${delimiter}"
+				mcmd=
+				foundf=true
+				continue
+			fi
+		done
+		if ${foundf}; then
+			continue
+		fi
+		echo -e "${icmd}${delimiter}"
+	done
+}
+
+# gen_cmds_help <with subcommands> <master command>
+gen_cmds_help() {
+	if ifNotSet CMDS_START_WITH; then
+		return
+	fi
+
+	CMDS=$(gen_cmds "${1:-0}" "${2:-}")
+	for icmd in ${CMDS}; do
+		# check for master cmd
+		mcmd=${icmd}
+		foundf=false
+		while ([ -n "${mcmd}" ]); do
+			mcmd=${mcmd%_*}
+			if [ "${icmd}" == "${mcmd}" ]; then
+				mcmd=
+				continue;
+			fi
+
+			if [ "$(type -t "${CMDS_START_WITH}_${mcmd}")" == "function" ]; then
+				if [ "$(type -t "${CMDS_START_WITH}help_${icmd}")" == "function" ]; then
+					echo -en "\t${mcmd} ${icmd#${mcmd}_}"
+					${CMDS_START_WITH}help_${icmd} "$@"
+					echo
+				else
+					echo -e "\t${mcmd} ${icmd#${mcmd}_}"
+				fi
+				mcmd=
+				foundf=true
+				continue
+			fi
+		done
+		if ${foundf}; then
+			continue
+		fi
+
+		if [ "$(type -t "${CMDS_START_WITH}help_${icmd}")" == "function" ]; then
+			echo -en "\t${icmd}"
+			${CMDS_START_WITH}help_${icmd} "$@"
+			echo
+		else
+			echo -e "\t${icmd}"
+		fi
+	done
+}
+
+# gen_subcmds cmdname
+gen_subcmds() {
+	cmdname="${1:-}"
+	echo -en "\t["
+	delim=''
+	CMDS=$(gen_cmds "1" "${cmdname}" ";")
+	echo ${CMDS} | \
+	while read -d ';' cmd; do
+		if [ "${cmd}" == "${cmdname}" ]; then
+			continue
+		fi
+		echo -n "${delim}${cmd#${cmdname}_}"
+		delim='|'
+	done
+	echo "]"
+}
+
+usage() {
+	echo "🙏 This script will smash your brain"
+	echo ""
+	echo "Usage:"
+	echo "	${0} <command> [subcommand] [options]"
+	echo ""
+
+	cleanup_display_error=false
+	cleanup_display_cleanup=false
+
+	callfname=${1:-}
+	usage_cmd=${callfname#${CMDS_START_WITH}_}
+	echo "Supported commands:"
+	gen_cmds_help 0 ${usage_cmd}
+	exit 1
+}
+
+if [ $# -eq 0 ]; then
+	usage
+fi
+
+# log "👶 ${SCRIPT_NAME} Starting up..."
+
+# log "🔎 Checking for required params and files..."
+# ifNotSet FIXME && die "💥 FIXME was not defined."
+# [[ FIXME ]] && die "💥 FIXME."
+# log "👍 All required params and files are ok."
+
+# log "🔎 Checking for required utilities..."
+[[ ! -x "$(command -v gpg)" ]] && die "💥 gpg is not installed. On Ubuntu, install the 'gpg' package."
+[[ ! -x "$(command -v ssh-keygen)" ]] && die "💥 ssh-keygen is not installed. On Ubuntu, install the 'openssh-client' package."
+[[ ! -x "$(command -v reprepro)" ]] && die "💥 reprepro is not installed. On Ubuntu, install the 'reprepro' package."
+# FIXME: add other
+# log "👍 All required utilities are installed."
+
+if [ ! -d ${MAIN_CONF_DIR} ]; then
+	if ! mkdir -p -- ${MAIN_CONF_DIR}; then
+		echo "ERROR: can't create config dir ${MAIN_CONF_DIR}"
+		exit 1
+	fi
+	chmod 0700 -- "${MAIN_CONF_DIR}"
+fi
+
+# echo "main($#): $@"
+fname="xdebrepo2_${1}"
+if [ "$(type -t "${fname}")" == "function" ]; then
+	shift
+	${fname} "$@"
+# 	die "✅ ${SCRIPT_NAME} Completed." 0
+else
+	usage
+fi
+
+# FIXME: insert code here
+
+# log_to_file_end
+

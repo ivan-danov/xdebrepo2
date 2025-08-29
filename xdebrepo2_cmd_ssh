@@ -1,0 +1,160 @@
+#!/bin/bash
+
+xdebrepo2help_ssh_add_publish_key()
+{
+	echo -e "\n\t\t<repodir> <public key file>"
+}
+xdebrepo2_ssh_add_publish_key()
+{
+# 	<repo> <pubkey file>
+# 	echo "${FUNCNAME[0]}($#): $@"
+	if [ $# -ne 2 ]; then
+		usage $FUNCNAME
+	fi
+	conf_load
+	REPO_CONF_PATH="$(realpath "${XDEBREPO2_CONF_PATH}/${1}")"
+	REPO_CONF_FILE="${REPO_CONF_PATH}/${REPO_CONF_FILE}"
+	repo_conf_load "$REPO_CONF_FILE"
+
+	if [ ! -f ${2} ]; then
+		echo "ERROR: no public key file '${2}'"
+		exit 1
+	fi
+
+	if ! ssh-keygen -l -f ${2} >/dev/null 2>&1; then
+		echo "ERROR: file '${2}' is not ssh public key"
+		exit 1
+	fi
+
+	if [ ! -d ${HOME}/.ssh ]; then
+		mkdir -pv -- "${HOME}/.ssh"
+		chmod 0700 -- "${HOME}/.ssh"
+	fi
+
+	echo -n "command=\"${SCRIPT_PATH}/xdebrepo2 ssh publish_restrict ${1}\"," >> ${HOME}/.ssh/authorized_keys
+	echo -n "no-pty,no-port-forwarding,no-agent-forwarding," >> ${HOME}/.ssh/authorized_keys
+	echo -n "no-X11-forwarding " >> ${HOME}/.ssh/authorized_keys
+	cat ${2} >> "${HOME}/.ssh/authorized_keys"
+	chmod 0600 -- "${HOME}/.ssh/authorized_keys"
+
+	mkdir -pv -- "${XDEBREPO2_PATH}/tmp/${1}"
+	chmod 0775 -- "${XDEBREPO2_PATH}/tmp/${1}"
+	exit 0
+}
+
+xdebrepo2help_ssh_ssh_add_apt_key()
+{
+	echo -e "\n\t\t<repodir> <public key file>"
+}
+xdebrepo2_ssh_add_apt_key()
+{
+# 	<repo> <pubkey file>
+# 	echo "${FUNCNAME[0]}($#): $@"
+	if [ $# -ne 2 ]; then
+		usage $FUNCNAME
+	fi
+	conf_load
+	REPO_CONF_PATH="$(realpath "${XDEBREPO2_CONF_PATH}/${1}")"
+	REPO_CONF_FILE="${REPO_CONF_PATH}/${REPO_CONF_FILE}"
+	repo_conf_load "$REPO_CONF_FILE"
+
+	if [ ! -f ${2} ]; then
+		echo "ERROR: no public key file '${2}'"
+		exit 1
+	fi
+
+	if ! ssh-keygen -l -f ${2} >/dev/null 2>&1; then
+		echo "ERROR: file '${2}' is not ssh public key"
+		exit 1
+	fi
+
+	if [ ! -d ${HOME}/.ssh ]; then
+		mkdir -pv -- "${HOME}/.ssh"
+		chmod 0700 -- "${HOME}/.ssh"
+	fi
+
+	echo -n "command=\"${SCRIPT_PATH}/xdebrepo2 ssh apt_restrict ${1}\"," >> ${HOME}/.ssh/authorized_keys
+	echo -n "no-pty,no-port-forwarding,no-agent-forwarding," >> ${HOME}/.ssh/authorized_keys
+	echo -n "no-X11-forwarding " >> ${HOME}/.ssh/authorized_keys
+	cat ${2} >> "${HOME}/.ssh/authorized_keys"
+	chmod 0600 -- "${HOME}/.ssh/authorized_keys"
+
+	echo "Copy $(basename ${2%.pub}) (secret key) to /root/.ssh/"
+	echo "Add to client /root/.ssh/config:"
+	echo "host ${1}.xdebrepo2"
+	echo "	hostname 127.0.0.1 # FIXME"
+	echo "	user repo"
+	echo "	port 22 # FIXME"
+	echo "	IdentityFile ~/.ssh/$(basename ${2%.pub})"
+	echo "	ForwardAgent no"
+	echo "	ForwardX11 no"
+	echo
+
+	exit 0
+}
+
+xdebrepo2help_ssh_publish_restrict()
+{
+	echo -e "\n\t\t<repodir>"
+}
+xdebrepo2_ssh_publish_restrict()
+{
+# 	<repo>
+# 	echo "${FUNCNAME[0]}($#): $@"
+
+	if [ $# -ne 1 ]; then
+		echo "ERROR: no repo"
+		exit 1
+	fi
+
+	conf_load
+# 	echo "$SSH_ORIGINAL_COMMAND" >> /tmp/xdebrepo2_publish_restrict.log
+
+	if [[ "$SSH_ORIGINAL_COMMAND" =~ ^scp[[:space:]]-t[[:space:]]${XDEBREPO2_PATH}/tmp/${1}.? ]]; then
+		$SSH_ORIGINAL_COMMAND
+	elif [[ "$SSH_ORIGINAL_COMMAND" =~ ^${HOME}/xdebrepo2_publish[[:space:]]${1}[[:space:]].?  ]]; then
+		${SSH_ORIGINAL_COMMAND};
+	else
+		echo "ERROR Access Denied"
+# 		echo "" >> /tmp/xdebrepo2_publish_restrict.log
+# 		echo "ERROR Access Denied" >> /tmp/xdebrepo2_publish_restrict.log
+# 		echo "$SSH_ORIGINAL_COMMAND" >> /tmp/xdebrepo2_publish_restrict.log
+		exit 1
+	fi
+}
+
+xdebrepo2_ssh_apt_restrict()
+{
+# 	<pubkey file>
+# 	echo "${FUNCNAME[0]}($#): $@"
+# 	echo "$SSH_ORIGINAL_COMMAND" >> /tmp/xdebrepo2_apt_restrict.log
+	#if [[ "$SSH_ORIGINAL_COMMAND" =~ ^scp[[:space:]]-t[[:space:]]/repo/tmp/.? ]]; then
+	#	$SSH_ORIGINAL_COMMAND
+	#elif [[ "$SSH_ORIGINAL_COMMAND" =~ ^/repo/github-publish[[:space:]].?  ]]; then
+		${SSH_ORIGINAL_COMMAND};
+	#else
+	#	echo "ERROR Access Denied"
+	# 	echo "" >> /tmp/xdebrepo2_publish_restrict.log
+	# 	echo "ERROR Access Denied" >> /tmp/xdebrepo2_publish_restrict.log
+	# 	echo "$SSH_ORIGINAL_COMMAND" >> /tmp/xdebrepo2_publish_restrict.log
+	# 	exit 1
+	#fi
+}
+
+xdebrepo2help_ssh()
+{
+	gen_subcmds "ssh" #"${FUNCNAME[0]#${CMDS_START_WITH}help_}"
+}
+xdebrepo2_ssh()
+{
+#	echo "${FUNCNAME[0]}($#): $@"
+	if [ $# -eq 0 ]; then
+		usage $FUNCNAME
+	fi
+	fname="${FUNCNAME[0]}_${1}"
+	if [ "$(type -t "${fname}")" != "function" ]; then
+		usage $FUNCNAME
+	fi
+	shift
+	${fname} "$@"
+}
