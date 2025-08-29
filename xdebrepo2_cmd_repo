@@ -421,7 +421,7 @@ xdebrepo2 ${REPO_SUITE} repository
 
 This package was debianized by ${DEBIANIZED_BY}.  $(date -R)
 
-Copyright: (c) 2025 ${2}
+Copyright: (c) $(date +"%Y") ${2}
 
 EOF
 

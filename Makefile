@@ -12,7 +12,7 @@ DEBNAME = $(PROJECT)
 ARCH = all
 
 VENDOR_NAME = "Ivan Danov"
-VENDOR_YEAR = "2025"
+VENDOR_YEAR = $(shell date +"%Y")
 VENDOR_EMAIL = ivan.danov@gmail.com
 VENDOR_SITE = https://github.com/ivan-danov/xdebrepo2
 
