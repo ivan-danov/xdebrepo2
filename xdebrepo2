@@ -249,7 +249,7 @@ gen_subcmds() {
 }
 
 usage() {
-	echo "🙏 This script will smash your brain"
+	echo "🙏 Custom signed debian repository organizer"
 	echo ""
 	echo "Usage:"
 	echo "	${0} <command> [subcommand] [options]"

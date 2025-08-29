@@ -391,6 +391,7 @@ xdebrepo2_repo_gen_install_deb()
 	REPO_SUITE="$(basename "${REPO_PATH}")"
 
 	DEBDIR="xdebrepo2-${REPO_SUITE}-apt-source"
+	DEBVER=0.0.1-1
 	mkdir -p -- ${DEBDIR}/etc/apt/sources.list.d
 	mkdir -p -- ${DEBDIR}/etc/apt/trusted.gpg.d
 
@@ -410,7 +411,7 @@ xdebrepo2_repo_gen_install_deb()
 	mkdir -p -- "${DEBDIR}/usr/share/doc/${DEBDIR}"
 
 	DEBIANIZED_BY=$(id -un)
-	full=$(cat /etc/passwd|grep ${DEBIANIZED_BY}|cut -d ':' -f 5|cut -d ',' -f 1)
+	full=$(cat /etc/passwd|grep "${DEBIANIZED_BY}:x"|cut -d ':' -f 5|cut -d ',' -f 1)
 	if [ ! -z "${full}" ]; then
 		DEBIANIZED_BY=${full}
 	fi
@@ -424,7 +425,14 @@ Copyright: (c) 2025 ${2}
 
 EOF
 
-	DEBVER=0.0.1-1
+	cat > "${DEBDIR}/usr/share/doc/${DEBDIR}/changelog" << EOF
+${DEBDIR} (${DEBVER}) unstable; urgency=medium
+
+  * Release ${DEBVER}
+
+ -- ${2}  $(date -R)
+EOF
+	gzip -9 -n "${DEBDIR}/usr/share/doc/${DEBDIR}/changelog"
 
 	mkdir -p -- "${DEBDIR}/DEBIAN"
 	cat > ${DEBDIR}/DEBIAN/control << EOF
@@ -437,7 +445,7 @@ Homepage: http://${REPO_SRV_NAME}/${REPO_WEB_DIR}
 Priority: optional
 Installed-Size: $(du -sl ${DEBDIR}/|cut -f 1)
 Description: ${REPO_ORIGIN}
-  ${REPO_DESCRIPTION}
+ ${REPO_DESCRIPTION}
 EOF
 
 	pushd ${DEBDIR} > /dev/null
@@ -456,9 +464,11 @@ EOF
 	fi
 	popd > /dev/null
 
-	chmod -R g-w -- ${DEBDIR}
-        fakeroot dpkg --build ${DEBDIR} ${DEBDIR}_${DEBVER}_all.deb
-        lintian ${LINTIAN_FLAGS:-} --tag-display-limit 0 ${DEBDIR}_${DEBVER}_all.deb || true
+	chmod -R g-w -- "${DEBDIR}"
+        fakeroot dpkg --build "${DEBDIR}" "${DEBDIR}_${DEBVER}_all.deb"
+        rm -rf "${DEBDIR}"
+
+        lintian ${LINTIAN_FLAGS:-} --tag-display-limit 0 "${DEBDIR}_${DEBVER}_all.deb" || true
 }
 
 xdebrepo2help_repo_dists()
