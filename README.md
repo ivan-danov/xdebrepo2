@@ -1,4 +1,4 @@
-[![GitHub Tag](https://github.com/ivan-danov/xubuntu-remaster/actions/workflows/build_deb.yml/badge.svg)](https://github.com/ivan-danov/xubuntu-remaster/releases)
+[![GitHub Tag](https://github.com/ivan-danov/xdebrepo2/actions/workflows/build_deb.yml/badge.svg)](https://github.com/ivan-danov/xubuntu-remaster/releases)
 
 # XDebRepo2
 
