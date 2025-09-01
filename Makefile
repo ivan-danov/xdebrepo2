@@ -90,13 +90,17 @@ define deb_begin
 
 	$(Q)cp copyright $(DEBDIR)/usr/share/doc/$(DEBNAME)/copyright
 
+	$(Q)mkdir -p $(DEBDIR)/usr/share/$(DEBNAME)
+	$(Q)cp xdebrepo2_publish $(DEBDIR)/usr/share/$(DEBNAME)/
+	$(Q)cp xdebrepo2_create $(DEBDIR)/usr/share/$(DEBNAME)/
+	$(Q)cp xdebrepo2_create_ssh $(DEBDIR)/usr/share/$(DEBNAME)/
+	$(Q)chmod 0755 $(DEBDIR)/usr/share/$(DEBNAME)/xdebrepo2_publish
+	$(Q)chmod 0755 $(DEBDIR)/usr/share/$(DEBNAME)/xdebrepo2_create
+	$(Q)chmod 0755 $(DEBDIR)/usr/share/$(DEBNAME)/xdebrepo2_create_ssh
+
 	$(Q)mkdir -p $(DEBDIR)/usr/lib/$(DEBNAME)
-	$(Q)cp xdebrepo2_publish $(DEBDIR)/usr/lib/$(DEBNAME)/
-	$(Q)cp xdebrepo2_create $(DEBDIR)/usr/lib/$(DEBNAME)/
-	$(Q)cp xdebrepo2_create_ssh $(DEBDIR)/usr/lib/$(DEBNAME)/
-	$(Q)chmod 0755 $(DEBDIR)/usr/lib/$(DEBNAME)/xdebrepo2_publish
-	$(Q)chmod 0755 $(DEBDIR)/usr/lib/$(DEBNAME)/xdebrepo2_create
-	$(Q)chmod 0755 $(DEBDIR)/usr/lib/$(DEBNAME)/xdebrepo2_create_ssh
+	$(Q)cp xdebrepo2_cmd_* $(DEBDIR)/usr/lib/$(DEBNAME)/
+	$(Q)chmod 0755 $(DEBDIR)/usr/lib/$(DEBNAME)/xdebrepo2_cmd_*
 
 endef # deb_begin
 
