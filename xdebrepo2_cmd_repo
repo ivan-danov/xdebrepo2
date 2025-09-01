@@ -177,13 +177,13 @@ EOF
 
 xdebrepo2help_repo_add()
 {
-	echo -e "\n\t\t<repodir> <distname> <deb file>"
+	echo -e "\n\t\t<repodir> <distname> <deb file> [<deb file> ...]"
 }
 xdebrepo2_repo_add()
 {
 # 	<repodir> <distname> <deb name>
 # 	echo "${FUNCNAME[0]}($#): $@"
-	if [ $# -ne 3 ]; then
+	if [ $# -lt 3 ]; then
 		usage $FUNCNAME
 	fi
 	conf_load
@@ -193,22 +193,26 @@ xdebrepo2_repo_add()
 
 	REPREPRO="reprepro -vvv "
 	export GNUPGHOME="${REPO_GNUPGHOME}"
-
-	REPO_ARCH=$(dpkg --info "${3}" | awk '/Architecture/ {printf "%s", $2}')
 	REPO_CODENAME=${2}
-	REPO_SUITE="$(basename "${REPO_PATH}")"
+	shift
+	shift
 
-	if [ ! -d "${REPO_PATH}/conf" ]; then
-		mkdir -p -- "${REPO_PATH}/conf"
-	fi
+	for DEBNAME in "$@"; do
 
-	if [ $(grep "Codename: ${REPO_CODENAME}" "${REPO_PATH}/conf/distributions" 2>/dev/null|wc -l) -eq 0 ]; then
+		REPO_ARCH=$(dpkg --info "${DEBNAME}" | awk '/Architecture/ {printf "%s", $2}')
+		REPO_SUITE="$(basename "${REPO_PATH}")"
 
-		if [ "${REPO_ARCH}" == "all" ]; then
-			REPO_ARCH=amd64
+		if [ ! -d "${REPO_PATH}/conf" ]; then
+			mkdir -p -- "${REPO_PATH}/conf"
 		fi
 
-		cat >> "${REPO_PATH}/conf/distributions" << EOF
+		if [ $(grep "Codename: ${REPO_CODENAME}" "${REPO_PATH}/conf/distributions" 2>/dev/null|wc -l) -eq 0 ]; then
+
+			if [ "${REPO_ARCH}" == "all" ]; then
+				REPO_ARCH=amd64
+			fi
+
+			cat >> "${REPO_PATH}/conf/distributions" << EOF
 
 Origin: ${REPO_ORIGIN}
 Label: ${REPO_SRV_NAME}/${REPO_WEB_DIR}
@@ -220,18 +224,20 @@ Description: ${REPO_DESCRIPTION}
 SignWith: ${REPO_SEC_KEY}
 EOF
 
-	fi
+		fi
 
-	PACKAGE_NAME=$(dpkg --info "${3}" | awk '/Package/ {printf "%s", $2}')
-	${REPREPRO} -b "${REPO_PATH}" remove ${REPO_CODENAME} "${PACKAGE_NAME}"
-	if [ $? -ne 0 ]; then
-		exit 1
-	fi
+		PACKAGE_NAME=$(dpkg --info "${DEBNAME}" | awk '/Package/ {printf "%s", $2}')
+		${REPREPRO} -b "${REPO_PATH}" remove ${REPO_CODENAME} "${PACKAGE_NAME}"
+		if [ $? -ne 0 ]; then
+			exit 1
+		fi
 
-	${REPREPRO} -b "${REPO_PATH}" includedeb ${REPO_CODENAME} "${3}"
-	if [ $? -ne 0 ]; then
-		exit 1
-	fi
+		${REPREPRO} -b "${REPO_PATH}" includedeb ${REPO_CODENAME} "${DEBNAME}"
+		if [ $? -ne 0 ]; then
+			exit 1
+		fi
+
+	done
 
 	# remove old
 	${REPREPRO} -b "${REPO_PATH}" --delete clearvanished
