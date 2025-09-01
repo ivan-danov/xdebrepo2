@@ -325,7 +325,7 @@ xdebrepo2_repo_aptconf_ssh()
 	REPO_CONF_FILE="${REPO_CONF_PATH}/${REPO_CONF_FILE}"
 	repo_conf_load "$REPO_CONF_FILE"
 
-	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|awk '/Architectures/ {printf "%s,", $2}')
+	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|sort -u|awk '/Architectures/ {printf "%s,", $2}')
 
 	for DIST_NAME in $(ls "${REPO_PATH}/dists"); do
 		rp=$(remove_double_slash "${REPO_SRV_NAME}/${REPO_PATH}")
@@ -349,7 +349,7 @@ xdebrepo2_repo_aptconf_http()
 	REPO_CONF_FILE="${REPO_CONF_PATH}/${REPO_CONF_FILE}"
 	repo_conf_load "$REPO_CONF_FILE"
 
-	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|awk '/Architectures/ {printf "%s,", $2}')
+	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|sort -u|awk '/Architectures/ {printf "%s,", $2}')
 
 	for DIST_NAME in $(ls "${REPO_PATH}/dists"); do
 		rp=$(remove_double_slash "${REPO_SRV_NAME}/${REPO_PATH}")
@@ -392,7 +392,7 @@ xdebrepo2_repo_gen_install_deb()
 	REPO_CONF_FILE="${REPO_CONF_PATH}/${REPO_CONF_FILE}"
 	repo_conf_load "$REPO_CONF_FILE"
 
-	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|awk '/Architectures/ {printf "%s,", $2}')
+	REPO_ARCH=$(cat "${REPO_PATH}/conf/distributions"|sort -u|awk '/Architectures/ {printf "%s,", $2}')
 
 	REPO_SUITE="$(basename "${REPO_PATH}")"
 
