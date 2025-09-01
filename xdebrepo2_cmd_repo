@@ -222,6 +222,12 @@ EOF
 
 	fi
 
+	PACKAGE_NAME=$(dpkg --info "${3}" | awk '/Package/ {printf "%s", $2}')
+	${REPREPRO} -b "${REPO_PATH}" remove ${REPO_CODENAME} "${PACKAGE_NAME}"
+	if [ $? -ne 0 ]; then
+		exit 1
+	fi
+
 	${REPREPRO} -b "${REPO_PATH}" includedeb ${REPO_CODENAME} "${3}"
 	if [ $? -ne 0 ]; then
 		exit 1
