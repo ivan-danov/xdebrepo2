@@ -112,6 +112,8 @@ xdebrepo2_ssh_publish_restrict()
 
 	if [[ "$SSH_ORIGINAL_COMMAND" =~ ^scp[[:space:]]-t[[:space:]]${XDEBREPO2_PATH}/tmp/${1}.? ]]; then
 		$SSH_ORIGINAL_COMMAND
+	elif [[ "$SSH_ORIGINAL_COMMAND" == "internal-sftp" ]]; then
+		/usr/lib/sftp-server
 	elif [[ "$SSH_ORIGINAL_COMMAND" =~ ^${HOME}/xdebrepo2_publish[[:space:]]${1}[[:space:]].?  ]]; then
 		${SSH_ORIGINAL_COMMAND};
 	else
